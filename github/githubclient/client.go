@@ -203,7 +203,7 @@ func (c *client) GetInfo(ctx context.Context, gitcmd git.GitInterface) *github.G
 	targetBranch := c.config.Repo.GitHubBranch
 	localCommitStack := git.GetLocalCommitStack(c.config, gitcmd)
 
-	pullRequests := matchPullRequestStack(c.config.Repo, targetBranch, localCommitStack, pullRequestConnection)
+	pullRequests := matchPullRequestStack(c.config, targetBranch, localCommitStack, pullRequestConnection)
 	for _, pr := range pullRequests {
 		if pr.Ready(c.config) {
 			pr.MergeStatus.Stacked = true
@@ -224,7 +224,7 @@ func (c *client) GetInfo(ctx context.Context, gitcmd git.GitInterface) *github.G
 }
 
 func matchPullRequestStack(
-	repoConfig *config.RepoConfig,
+	cfg *config.Config,
 	targetBranch string,
 	localCommitStack []git.Commit,
 	allPullRequests fezzik_types.PullRequestConnection) []*github.PullRequest {
@@ -261,11 +261,11 @@ func matchPullRequestStack(
 			InQueue:    node.MergeQueueEntry != nil,
 		}
 
-		matches := git.BranchNameRegex.FindStringSubmatch(node.HeadRefName)
-		if matches != nil {
+		commitID := git.GetCommitIdFromBranchName(cfg, node.HeadRefName)
+		if commitID != "" {
 			commit := (*node.Commits.Nodes)[len(*node.Commits.Nodes)-1].Commit
 			pullRequest.Commit = git.Commit{
-				CommitID:   matches[2],
+				CommitID:   commitID,
 				CommitHash: commit.Oid,
 				Subject:    commit.MessageHeadline,
 				Body:       commit.MessageBody,
@@ -322,11 +322,10 @@ func matchPullRequestStack(
 			break
 		}
 
-		matches := git.BranchNameRegex.FindStringSubmatch(currpr.ToBranch)
-		if matches == nil {
+		nextCommitID := git.GetCommitIdFromBranchName(cfg, currpr.ToBranch)
+		if nextCommitID == "" {
 			panic(fmt.Errorf("invalid base branch for pull request:%s", currpr.ToBranch))
 		}
-		nextCommitID := matches[2]
 
 		currpr = pullRequestMap[nextCommitID]
 	}
@@ -431,11 +430,11 @@ func formatStackMarkdown(commit git.Commit, stack []*github.PullRequest, showPrT
 	var buf bytes.Buffer
 	for i := len(stack) - 1; i >= 0; i-- {
 		isCurrent := stack[i].Commit == commit
-		var suffix string
+		var prefix string
 		if isCurrent {
-			suffix = " ⬅"
+			prefix = "➡ "
 		} else {
-			suffix = ""
+			prefix = "  "
 		}
 		var prTitle string
 		if showPrTitlesInStack {
@@ -444,7 +443,7 @@ func formatStackMarkdown(commit git.Commit, stack []*github.PullRequest, showPrT
 			prTitle = ""
 		}
 
-		buf.WriteString(fmt.Sprintf("- %s#%d%s\n", prTitle, stack[i].Number, suffix))
+		buf.WriteString(fmt.Sprintf("- %s%s#%d\n", prefix, prTitle, stack[i].Number))
 	}
 
 	return buf.String()

@@ -27,11 +27,21 @@ func GetLocalBranchName(gitcmd GitInterface) string {
 }
 
 func BranchNameFromCommit(cfg *config.Config, commit Commit) string {
-	prPrefix := cfg.User.PrPrefix
+	prPrefix := cfg.Repo.PrPrefix
 	return prPrefix + "/" + commit.CommitID
 }
 
+var CommitIdPattern = `\w{3,40}`
 var BranchNameRegex = regexp.MustCompile(`spr/([a-zA-Z0-9_\-/\.]+)/([a-f0-9]{8})$`)
+func GetCommitIdFromBranchName(cfg *config.Config, branchName string) (string) {
+	prPrefix := cfg.Repo.PrPrefix
+	var BranchNameRegex2 = regexp.MustCompile(prPrefix + `/(` + CommitIdPattern + `)$`)
+	matches := BranchNameRegex2.FindStringSubmatch(branchName)
+	if len(matches) != 2 {
+		return ""
+	}
+	return matches[1]
+}
 
 // GetLocalTopCommit returns the top unmerged commit in the stack
 //
@@ -79,7 +89,7 @@ func parseLocalCommitStack(commitLog string) ([]Commit, bool) {
 	var commits []Commit
 
 	commitHashRegex := regexp.MustCompile(`^commit ([a-f0-9]{40})`)
-	commitIDRegex := regexp.MustCompile(`commit-id\:(\w{3,40})`)
+	commitIDRegex := regexp.MustCompile(`commit-id\:(` + CommitIdPattern + `)`)
 
 	// The list of commits from the command line actually starts at the
 	//  most recent commit. In order to reverse the list we use a

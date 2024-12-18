@@ -522,9 +522,10 @@ func TestMatchPullRequestStack(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		repoConfig := &config.RepoConfig{}
+		config := config.DefaultConfig()
+		config.Repo.PrPrefix = "spr/master"
 		t.Run(tc.name, func(t *testing.T) {
-			actual := matchPullRequestStack(repoConfig, "master", tc.commits, tc.prs)
+			actual := matchPullRequestStack(config, "master", tc.commits, tc.prs)
 			require.Equal(t, tc.expect, actual)
 		})
 	}
@@ -566,8 +567,8 @@ It even includes some **markdown** formatting.
 ---
 
 **Stack**:
-- #2 ⬅
-- #1
+- ➡ #2
+-   #1
 
 
 ⚠️ *Part of a stack created by [spr](https://github.com/ejoffe/spr). Do not merge manually using the UI - doing so may have unexpected results.*`,
@@ -623,8 +624,8 @@ It even includes some **markdown** formatting.
 ---
 
 **Stack**:
-- Title B #2 ⬅
-- Title A #1
+- ➡ Title B #2
+-   Title A #1
 
 
 ⚠️ *Part of a stack created by [spr](https://github.com/ejoffe/spr). Do not merge manually using the UI - doing so may have unexpected results.*`,
