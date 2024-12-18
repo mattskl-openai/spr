@@ -39,6 +39,7 @@ type RepoConfig struct {
 
 	ShowPrTitlesInStack    bool `default:"false" yaml:"showPrTitlesInStack"`
 	BranchPushIndividually bool `default:"false" yaml:"branchPushIndividually"`
+	PrPrefix         string `default:"spr" yaml:"prPrefix"`
 }
 
 type UserConfig struct {
@@ -47,6 +48,7 @@ type UserConfig struct {
 	LogGitHubCalls   bool `default:"true" yaml:"logGitHubCalls"`
 	StatusBitsHeader bool `default:"true" yaml:"statusBitsHeader"`
 	StatusBitsEmojis bool `default:"true" yaml:"statusBitsEmojis"`
+	ChainUpdateDepth int  `default:"1" yaml:"chainUpdateDepth"`
 
 	CreateDraftPRs       bool `default:"false" yaml:"createDraftPRs"`
 	PreserveTitleAndBody bool `default:"false" yaml:"preserveTitleAndBody"`
