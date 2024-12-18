@@ -47,6 +47,8 @@ type UserConfig struct {
 	LogGitHubCalls   bool `default:"true" yaml:"logGitHubCalls"`
 	StatusBitsHeader bool `default:"true" yaml:"statusBitsHeader"`
 	StatusBitsEmojis bool `default:"true" yaml:"statusBitsEmojis"`
+	ChainUpdateDepth int  `default:"1" yaml:"chainUpdateDepth"`
+	PrPrefix         string `default:"spr" yaml:"prPrefix"`
 
 	CreateDraftPRs       bool `default:"false" yaml:"createDraftPRs"`
 	PreserveTitleAndBody bool `default:"false" yaml:"preserveTitleAndBody"`

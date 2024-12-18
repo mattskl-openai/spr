@@ -2,7 +2,9 @@ package git
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -25,8 +27,8 @@ func GetLocalBranchName(gitcmd GitInterface) string {
 }
 
 func BranchNameFromCommit(cfg *config.Config, commit Commit) string {
-	remoteBranchName := cfg.Repo.GitHubBranch
-	return "spr/" + remoteBranchName + "/" + commit.CommitID
+	prPrefix := cfg.User.PrPrefix
+	return prPrefix + "/" + commit.CommitID
 }
 
 var BranchNameRegex = regexp.MustCompile(`spr/([a-zA-Z0-9_\-/\.]+)/([a-f0-9]{8})$`)
@@ -53,7 +55,9 @@ func GetLocalCommitStack(cfg *config.Config, gitcmd GitInterface) []Commit {
 	commits, valid := parseLocalCommitStack(commitLog)
 	if !valid {
 		// if not valid - run rebase to add commit ids
-		rewordPath, err := exec.LookPath("spr_reword_helper")
+		homeDir := os.Getenv("HOME")
+		rewordPath := filepath.Join(homeDir, "code/spr/cmd/reword/reword")
+		rewordPath, err := exec.LookPath(rewordPath)
 		check(err)
 		rebaseCommand := fmt.Sprintf("rebase %s/%s -i --autosquash --autostash",
 			cfg.Repo.GitHubRemote, cfg.Repo.GitHubBranch)
@@ -75,7 +79,7 @@ func parseLocalCommitStack(commitLog string) ([]Commit, bool) {
 	var commits []Commit
 
 	commitHashRegex := regexp.MustCompile(`^commit ([a-f0-9]{40})`)
-	commitIDRegex := regexp.MustCompile(`commit-id\:([a-f0-9]{8})`)
+	commitIDRegex := regexp.MustCompile(`commit-id\:(\w{3,40})`)
 
 	// The list of commits from the command line actually starts at the
 	//  most recent commit. In order to reverse the list we use a

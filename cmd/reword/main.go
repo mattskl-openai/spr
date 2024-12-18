@@ -97,6 +97,7 @@ func appendCommitID(filename string, missingNewLine bool) {
 	if missingNewLine {
 		appendfile.WriteString("\n")
 	}
+
 	appendfile.WriteString("\n")
 	appendfile.WriteString(fmt.Sprintf("commit-id:%s\n", commitID.String()[:8]))
 }
