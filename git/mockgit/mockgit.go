@@ -154,7 +154,7 @@ func (r *commitResponse) Output() string {
 		fmt.Fprintf(&b, "\n")
 		fmt.Fprintf(&b, "\t%s\n", c.Subject)
 		fmt.Fprintf(&b, "\n")
-		fmt.Fprintf(&b, "\tcommit-id:%s\n", c.CommitID)
+		fmt.Fprintf(&b, "\tpr:%s\n", c.CommitID)
 		fmt.Fprintf(&b, "\n")
 	}
 

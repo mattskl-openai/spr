@@ -35,10 +35,10 @@ func TestMatchPullRequestStack(t *testing.T) {
 						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
 							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
 								{
-									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "1", MessageBody: "commit-id:1"},
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "1", MessageBody: "pr:1"},
 								},
 								{
-									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "2", MessageBody: "commit-id:2"},
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "2", MessageBody: "pr:2"},
 								},
 							},
 						},
@@ -53,12 +53,12 @@ func TestMatchPullRequestStack(t *testing.T) {
 					Commit: git.Commit{
 						CommitID:   "00000002",
 						CommitHash: "2",
-						Body:       "commit-id:2",
+						Body:       "pr:2",
 					},
 					InQueue: true,
 					Commits: []git.Commit{
-						{CommitID: "1", CommitHash: "1", Body: "commit-id:1"},
-						{CommitID: "2", CommitHash: "2", Body: "commit-id:2"},
+						{CommitID: "1", CommitHash: "1", Body: "pr:1"},
+						{CommitID: "2", CommitHash: "2", Body: "pr:2"},
 					},
 					MergeStatus: github.PullRequestMergeStatus{
 						ChecksPass: github.CheckStatusPass,
@@ -84,10 +84,10 @@ func TestMatchPullRequestStack(t *testing.T) {
 						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
 							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
 								{
-									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "1", MessageBody: "commit-id:1"},
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "1", MessageBody: "pr:1"},
 								},
 								{
-									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "2", MessageBody: "commit-id:2"},
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "2", MessageBody: "pr:2"},
 								},
 							},
 						},
@@ -99,7 +99,7 @@ func TestMatchPullRequestStack(t *testing.T) {
 						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
 							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
 								{
-									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "3", MessageBody: "commit-id:3"},
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "3", MessageBody: "pr:3"},
 								},
 							},
 						},
@@ -114,12 +114,12 @@ func TestMatchPullRequestStack(t *testing.T) {
 					Commit: git.Commit{
 						CommitID:   "00000002",
 						CommitHash: "2",
-						Body:       "commit-id:2",
+						Body:       "pr:2",
 					},
 					InQueue: true,
 					Commits: []git.Commit{
-						{CommitID: "1", CommitHash: "1", Body: "commit-id:1"},
-						{CommitID: "2", CommitHash: "2", Body: "commit-id:2"},
+						{CommitID: "1", CommitHash: "1", Body: "pr:1"},
+						{CommitID: "2", CommitHash: "2", Body: "pr:2"},
 					},
 					MergeStatus: github.PullRequestMergeStatus{
 						ChecksPass: github.CheckStatusPass,
@@ -132,10 +132,10 @@ func TestMatchPullRequestStack(t *testing.T) {
 					Commit: git.Commit{
 						CommitID:   "00000003",
 						CommitHash: "3",
-						Body:       "commit-id:3",
+						Body:       "pr:3",
 					},
 					Commits: []git.Commit{
-						{CommitID: "3", CommitHash: "3", Body: "commit-id:3"},
+						{CommitID: "3", CommitHash: "3", Body: "pr:3"},
 					},
 					MergeStatus: github.PullRequestMergeStatus{
 						ChecksPass: github.CheckStatusPass,

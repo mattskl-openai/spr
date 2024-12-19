@@ -24,7 +24,7 @@ Date:   Wed May 21 19:53:12 1980 -0700
 
 	Supergalactic speed
 
-	commit-id:053f6d16
+	pr:053f6d16
 `,
 			expectedCommits: []Commit{
 				{
@@ -47,7 +47,7 @@ Date:   Wed May 21 19:53:12 1980 -0700
 
 	Super universe body.
 
-	commit-id:053f6d16
+	pr:053f6d16
 `,
 			expectedCommits: []Commit{
 				{
@@ -68,7 +68,7 @@ Date:   Wed May 21 19:53:12 1980 -0700
 
 	Supergalactic speed
 
-	commit-id:053f6d16
+	pr:053f6d16
 
 commit d604099d6604949e786e3d781919d43e46e88521 (origin/pr/ejoffe/master/39c84ea3)
 Author: Hans Solo
@@ -76,7 +76,7 @@ Date:   Wed May 21 19:52:51 1980 -0700
 
 	More engine power
 
-	commit-id:39c84ea3
+	pr:39c84ea3
 `,
 			expectedCommits: []Commit{
 				{
