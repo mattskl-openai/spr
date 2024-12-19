@@ -37,6 +37,7 @@ func TestDefaultConfig(t *testing.T) {
 		},
 		User: &UserConfig{
 			ShowPRLink:       true,
+			ChainUpdateDepth: 1,
 			LogGitCommands:   false,
 			LogGitHubCalls:   false,
 			StatusBitsHeader: true,

@@ -1,8 +1,11 @@
-githubRepoOwner: ejoffe
+githubRepoOwner: mattskl-openai
 githubRepoName: spr
 githubHost: github.com
+githubRemote: origin
+githubBranch: main
 requireChecks: true
 requireApproval: false
-mergeMethod: rebase
+mergeMethod: squash
 mergeQueue: false
 forceFetchTags: false
+prPrefix: mattskl
