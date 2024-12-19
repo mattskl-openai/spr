@@ -525,7 +525,322 @@ func TestMatchPullRequestStack(t *testing.T) {
 		config := config.DefaultConfig()
 		config.Repo.PrPrefix = "spr/master"
 		t.Run(tc.name, func(t *testing.T) {
-			actual := matchPullRequestStack(config, "master", tc.commits, tc.prs)
+			actual := matchPullRequestStack(config, "master", tc.commits, tc.prs, true)
+			require.Equal(t, tc.expect, actual)
+		})
+	}
+}
+
+func TestMatchPullRequestStackLocalSourceOfTruth(t *testing.T) {
+	tests := []struct {
+		name    string
+		commits []git.Commit
+		prs     fezzik_types.PullRequestConnection
+		expect  []*github.PullRequest
+	}{
+		{
+			// in local: 4 -> 3 -> 2 -> 1
+			// in PR: 4 {4} -> 3 {3} -> 2 {2, 1}; 1 {1} (disconnected)
+			name: "FourthCommit",
+			commits: []git.Commit{
+				{CommitID: "00000001"},
+				{CommitID: "00000002"},
+				{CommitID: "00000003"},
+				{CommitID: "00000004"},
+			},
+			prs: fezzik_types.PullRequestConnection{
+				Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodes{
+					{
+						Id:          "1",
+						HeadRefName: "spr/master/00000001",
+						BaseRefName: "master",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "1", MessageBody: "pr:1"},
+								},
+							},
+						},
+					},
+					{
+						Id:          "2",
+						HeadRefName: "spr/master/00000002",
+						BaseRefName: "master",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "1", MessageBody: "pr:1"},
+								},
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "2", MessageBody: "pr:2"},
+								},
+							},
+						},
+					},
+					{
+						Id:          "3",
+						HeadRefName: "spr/master/00000003",
+						BaseRefName: "spr/master/00000002",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "3", MessageBody: "pr:3"},
+								},
+							},
+						},
+					},
+					{
+						Id:          "4",
+						HeadRefName: "spr/master/00000004",
+						BaseRefName: "spr/master/00000003",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "4", MessageBody: "pr:4"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expect: []*github.PullRequest{
+				{
+					ID:         "1",
+					FromBranch: "spr/master/00000001",
+					ToBranch:   "master",
+					Commit: git.Commit{
+						CommitID:   "00000001",
+						CommitHash: "1",
+						Body:       "pr:1",
+					},
+					Commits: []git.Commit{
+						{CommitID: "1", CommitHash: "1", Body: "pr:1"},
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+				{
+					ID:         "2",
+					FromBranch: "spr/master/00000002",
+					ToBranch:   "master",
+					Commit: git.Commit{
+						CommitID:   "00000002",
+						CommitHash: "2",
+						Body:       "pr:2",
+					},
+					Commits: []git.Commit{
+						{CommitID: "1", CommitHash: "1", Body: "pr:1"},
+						{CommitID: "2", CommitHash: "2", Body: "pr:2"},
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+				{
+					ID:         "3",
+					FromBranch: "spr/master/00000003",
+					ToBranch:   "spr/master/00000002",
+					Commit: git.Commit{
+						CommitID:   "00000003",
+						CommitHash: "3",
+						Body:       "pr:3",
+					},
+					Commits: []git.Commit{
+						{CommitID: "3", CommitHash: "3", Body: "pr:3"},
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+				{
+					ID:         "4",
+					FromBranch: "spr/master/00000004",
+					ToBranch:   "spr/master/00000003",
+					Commit: git.Commit{
+						CommitID:   "00000004",
+						CommitHash: "4",
+						Body:       "pr:4",
+					},
+					Commits: []git.Commit{
+						{CommitID: "4", CommitHash: "4", Body: "pr:4"},
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+			},
+		},
+		{
+			// in local: 3 -> 1
+			// in PR: 3 {3} -> 2 {2} -> 1 {1}
+			name: "RemoveMiddleCommit",
+			commits: []git.Commit{
+				{CommitID: "00000001"},
+				{CommitID: "00000003"},
+			},
+			prs: fezzik_types.PullRequestConnection{
+				Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodes{
+					{
+						Id:          "1",
+						HeadRefName: "spr/master/00000001",
+						BaseRefName: "master",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "1"},
+								},
+							},
+						},
+					},
+					{
+						Id:          "2",
+						HeadRefName: "spr/master/00000002",
+						BaseRefName: "spr/master/00000001",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "2"},
+								},
+							},
+						},
+					},
+					{
+						Id:          "3",
+						HeadRefName: "spr/master/00000003",
+						BaseRefName: "spr/master/00000002",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "3"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expect: []*github.PullRequest{
+				{
+					ID:         "1",
+					FromBranch: "spr/master/00000001",
+					ToBranch:   "master",
+					Commit: git.Commit{
+						CommitID:   "00000001",
+						CommitHash: "1",
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+				{
+					ID:         "3",
+					FromBranch: "spr/master/00000003",
+					ToBranch:   "spr/master/00000002",
+					Commit: git.Commit{
+						CommitID:   "00000003",
+						CommitHash: "3",
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+			},
+		},
+		{
+			// in local: 2 -> 3 -> 1
+			// in PR: 3 {3} -> 2 {2} -> 1 {1}
+			name: "ReorderCommits",
+			commits: []git.Commit{
+				{CommitID: "00000001"},
+				{CommitID: "00000003"},
+				{CommitID: "00000002"},
+			},
+			prs: fezzik_types.PullRequestConnection{
+				Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodes{
+					{
+						Id:          "1",
+						HeadRefName: "spr/master/00000001",
+						BaseRefName: "master",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "1"},
+								},
+							},
+						},
+					},
+					{
+						Id:          "2",
+						HeadRefName: "spr/master/00000002",
+						BaseRefName: "spr/master/00000001",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "2"},
+								},
+							},
+						},
+					},
+					{
+						Id:          "3",
+						HeadRefName: "spr/master/00000003",
+						BaseRefName: "spr/master/00000002",
+						Commits: fezzik_types.PullRequestsViewerPullRequestsNodesCommits{
+							Nodes: &fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodes{
+								{
+									fezzik_types.PullRequestsViewerPullRequestsNodesCommitsNodesCommit{Oid: "3"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expect: []*github.PullRequest{
+				{
+					ID:         "1",
+					FromBranch: "spr/master/00000001",
+					ToBranch:   "master",
+					Commit: git.Commit{
+						CommitID:   "00000001",
+						CommitHash: "1",
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+				{
+					ID:         "3",
+					FromBranch: "spr/master/00000003",
+					ToBranch:   "spr/master/00000002",
+					Commit: git.Commit{
+						CommitID:   "00000003",
+						CommitHash: "3",
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+				{
+					ID:         "2",
+					FromBranch: "spr/master/00000002",
+					ToBranch:   "spr/master/00000001",
+					Commit: git.Commit{
+						CommitID:   "00000002",
+						CommitHash: "2",
+					},
+					MergeStatus: github.PullRequestMergeStatus{
+						ChecksPass: github.CheckStatusPass,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		config := config.DefaultConfig()
+		config.Repo.PrPrefix = "spr/master"
+		t.Run(tc.name, func(t *testing.T) {
+			actual := matchPullRequestStack(config, "master", tc.commits, tc.prs, false)
 			require.Equal(t, tc.expect, actual)
 		})
 	}
