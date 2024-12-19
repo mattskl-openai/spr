@@ -37,9 +37,9 @@ type RepoConfig struct {
 
 	ForceFetchTags bool `default:"false" yaml:"forceFetchTags"`
 
-	ShowPrTitlesInStack    bool `default:"false" yaml:"showPrTitlesInStack"`
-	BranchPushIndividually bool `default:"false" yaml:"branchPushIndividually"`
-	PrPrefix         string `default:"spr" yaml:"prPrefix"`
+	ShowPrTitlesInStack    bool   `default:"false" yaml:"showPrTitlesInStack"`
+	BranchPushIndividually bool   `default:"false" yaml:"branchPushIndividually"`
+	PrPrefix               string `default:"spr" yaml:"prPrefix"`
 }
 
 type UserConfig struct {
