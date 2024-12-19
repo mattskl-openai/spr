@@ -203,7 +203,7 @@ func (c *client) GetInfo(ctx context.Context, gitcmd git.GitInterface) *github.G
 	targetBranch := c.config.Repo.GitHubBranch
 	localCommitStack := git.GetLocalCommitStack(c.config, gitcmd)
 
-	pullRequests := matchPullRequestStack(c.config, targetBranch, localCommitStack, pullRequestConnection)
+	pullRequests := matchPullRequestStack(c.config, targetBranch, localCommitStack, pullRequestConnection, false)
 	for _, pr := range pullRequests {
 		if pr.Ready(c.config) {
 			pr.MergeStatus.Stacked = true
@@ -227,7 +227,8 @@ func matchPullRequestStack(
 	cfg *config.Config,
 	targetBranch string,
 	localCommitStack []git.Commit,
-	allPullRequests fezzik_types.PullRequestConnection) []*github.PullRequest {
+	allPullRequests fezzik_types.PullRequestConnection,
+	traversePr bool) []*github.PullRequest {
 
 	if len(localCommitStack) == 0 || allPullRequests.Nodes == nil {
 		return []*github.PullRequest{}
@@ -295,16 +296,6 @@ func matchPullRequestStack(
 
 	var pullRequests []*github.PullRequest
 
-	// find top pr
-	var currpr *github.PullRequest
-	var found bool
-	for i := len(localCommitStack) - 1; i >= 0; i-- {
-		currpr, found = pullRequestMap[localCommitStack[i].CommitID]
-		if found {
-			break
-		}
-	}
-
 	// The list of commits from the command line actually starts at the
 	//  most recent commit. In order to reverse the list we use a
 	//  custom prepend function instead of append
@@ -315,19 +306,39 @@ func matchPullRequestStack(
 		return l
 	}
 
-	// build pr stack
-	for currpr != nil {
-		pullRequests = prepend(pullRequests, currpr)
-		if currpr.ToBranch == targetBranch {
-			break
+	if traversePr {
+		// find top pr
+		var currpr *github.PullRequest
+		var found bool
+		for i := len(localCommitStack) - 1; i >= 0; i-- {
+			currpr, found = pullRequestMap[localCommitStack[i].CommitID]
+			if found {
+				break
+			}
 		}
 
-		nextCommitID := git.GetCommitIdFromBranchName(cfg, currpr.ToBranch)
-		if nextCommitID == "" {
-			panic(fmt.Errorf("invalid base branch for pull request:%s", currpr.ToBranch))
-		}
+		// build pr stack
+		for currpr != nil {
+			pullRequests = prepend(pullRequests, currpr)
+			if currpr.ToBranch == targetBranch {
+				break
+			}
 
-		currpr = pullRequestMap[nextCommitID]
+			nextCommitID := git.GetCommitIdFromBranchName(cfg, currpr.ToBranch)
+			if nextCommitID == "" {
+				panic(fmt.Errorf("invalid base branch for pull request:%s", currpr.ToBranch))
+			}
+
+			currpr = pullRequestMap[nextCommitID]
+		}
+	} else {
+		// Just extract PRs matching local commit ID
+		for _, localCommit := range localCommitStack {
+			matchPr, found := pullRequestMap[localCommit.CommitID]
+			if found {
+				pullRequests = append(pullRequests, matchPr)
+			}
+		}
 	}
 
 	return pullRequests
