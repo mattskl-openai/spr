@@ -525,7 +525,7 @@ func TestMatchPullRequestStack(t *testing.T) {
 		config := config.DefaultConfig()
 		config.Repo.PrPrefix = "spr/master"
 		t.Run(tc.name, func(t *testing.T) {
-			actual := matchPullRequestStack(config, "master", tc.commits, tc.prs)
+			actual := matchPullRequestStack(config, "master", tc.commits, tc.prs, true)
 			require.Equal(t, tc.expect, actual)
 		})
 	}

@@ -108,13 +108,15 @@ func alignLocalCommits(commits []git.Commit, prs []*github.PullRequest) []git.Co
 	var remoteCommits = map[string]bool{}
 	for _, pr := range prs {
 		for _, c := range pr.Commits {
-			remoteCommits[c.CommitID] = c.CommitID == pr.Commit.CommitID
+			if c.CommitID == pr.Commit.CommitID {
+				remoteCommits[c.CommitID] = true
+			}
 		}
 	}
 
 	var result []git.Commit
 	for _, commit := range commits {
-		if head, ok := remoteCommits[commit.CommitID]; ok && !head {
+		if head, ok := remoteCommits[commit.CommitID]; !ok || !head {
 			continue
 		}
 
@@ -150,8 +152,21 @@ func (sd *stackediff) UpdatePullRequests(ctx context.Context, reviewers []string
 	}
 	for _, pr := range githubInfo.PullRequests {
 		if _, found := localCommitMap[pr.Commit.CommitID]; !found {
-			sd.github.CommentPullRequest(ctx, pr, "Closing pull request: commit has gone away")
-			sd.github.ClosePullRequest(ctx, pr)
+			fmt.Println("No local commit found for existing pull request with pr:", pr.Commit.CommitID)
+			fmt.Println("Local commit map:", localCommitMap)
+			fmt.Println("Will close PR if responded with 'y'")
+			var ack string
+			for {
+				fmt.Scanf("%s", &ack)
+				if ack == "y" {
+					sd.github.CommentPullRequest(ctx, pr, "Closing pull request: commit has gone away")
+					sd.github.ClosePullRequest(ctx, pr)
+					break
+				} else {
+					fmt.Println("Received %s; Will close PR if responded with 'y'", ack)
+					fmt.Scanf("%s", &ack)
+				}
+			}
 		} else {
 			validPullRequests = append(validPullRequests, pr)
 		}
