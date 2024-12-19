@@ -78,7 +78,7 @@ func GetLocalCommitStack(cfg *config.Config, gitcmd GitInterface) []Commit {
 		if !valid {
 			// if still not valid - panic
 			errMsg := "unable to fetch local commits\n"
-			errMsg += " most likely this is an issue with missing commit-id in the commit body\n"
+			errMsg += " most likely this is an issue with missing pr in the commit body\n"
 			panic(errMsg)
 		}
 	}
@@ -89,7 +89,7 @@ func parseLocalCommitStack(commitLog string) ([]Commit, bool) {
 	var commits []Commit
 
 	commitHashRegex := regexp.MustCompile(`^commit ([a-f0-9]{40})`)
-	commitIDRegex := regexp.MustCompile(`commit-id\:(` + CommitIdPattern + `)`)
+	commitIDRegex := regexp.MustCompile(`pr\:(` + CommitIdPattern + `)`)
 
 	// The list of commits from the command line actually starts at the
 	//  most recent commit. In order to reverse the list we use a
@@ -102,9 +102,9 @@ func parseLocalCommitStack(commitLog string) ([]Commit, bool) {
 	}
 
 	// commitScanOn is set to true when the commit hash is matched
-	//  and turns false when the commit-id is matched.
-	//  Commit messages always start with a hash and end with a commit-id.
-	//  The commit subject and body are always between the hash the commit-id.
+	//  and turns false when the pr is matched.
+	//  Commit messages always start with a hash and end with a pr.
+	//  The commit subject and body are always between the hash the pr.
 	commitScanOn := false
 
 	subjectIndex := 0
@@ -119,7 +119,7 @@ func parseLocalCommitStack(commitLog string) ([]Commit, bool) {
 		if matches != nil {
 			log.Debug().Interface("matches", matches).Msg("parseLocalCommitStack :: commitHashMatch")
 			if commitScanOn {
-				// missing the commit-id
+				// missing the pr
 				log.Debug().Msg("parseLocalCommitStack :: missing commit id")
 				return nil, false
 			}
@@ -159,9 +159,9 @@ func parseLocalCommitStack(commitLog string) ([]Commit, bool) {
 	}
 
 	// if commitScanOn is true here it means there was a commit without
-	//  a commit-id
+	//  a pr
 	if commitScanOn {
-		// missing the commit-id
+		// missing the pr
 		log.Debug().Msg("parseLocalCommitStack :: missing last commit id")
 		return nil, false
 	}

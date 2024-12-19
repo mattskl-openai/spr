@@ -35,7 +35,7 @@ func main() {
 				res := strings.Split(line, " ")
 				var out string
 				gitcmd.Git("log --format=%B -n 1 "+res[1], &out)
-				if !strings.Contains(out, "commit-id") {
+				if !strings.Contains(out, "pr") {
 					line = strings.Replace(line, "pick ", "reword ", 1)
 				}
 			}
@@ -69,7 +69,7 @@ func shouldAppendCommitID(filename string) (missingCommitID bool, missingNewLine
 		if !strings.HasPrefix(line, "#") {
 			lineCount += 1
 		}
-		if strings.HasPrefix(line, "commit-id:") {
+		if strings.HasPrefix(line, "pr:") {
 			missingCommitID = false
 			return
 		}
@@ -99,7 +99,7 @@ func appendCommitID(filename string, missingNewLine bool) {
 	}
 
 	appendfile.WriteString("\n")
-	appendfile.WriteString(fmt.Sprintf("commit-id:%s\n", commitID.String()[:8]))
+	appendfile.WriteString(fmt.Sprintf("pr:%s\n", commitID.String()[:8]))
 }
 
 func check(err error) {

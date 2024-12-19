@@ -233,13 +233,13 @@ func matchPullRequestStack(
 		return []*github.PullRequest{}
 	}
 
-	// pullRequestMap is a map from commit-id to pull request
+	// pullRequestMap is a map from pr to pull request
 	pullRequestMap := make(map[string]*github.PullRequest)
 	for _, node := range *allPullRequests.Nodes {
 		var commits []git.Commit
 		for _, v := range *node.Commits.Nodes {
 			for _, line := range strings.Split(v.Commit.MessageBody, "\n") {
-				if strings.HasPrefix(line, "commit-id:") {
+				if strings.HasPrefix(line, "pr:") {
 					commits = append(commits, git.Commit{
 						CommitID:   strings.Split(line, ":")[1],
 						CommitHash: v.Commit.Oid,
