@@ -33,7 +33,8 @@ func BranchNameFromCommit(cfg *config.Config, commit Commit) string {
 
 var CommitIdPattern = `\w{3,40}`
 var BranchNameRegex = regexp.MustCompile(`spr/([a-zA-Z0-9_\-/\.]+)/([a-f0-9]{8})$`)
-func GetCommitIdFromBranchName(cfg *config.Config, branchName string) (string) {
+
+func GetCommitIdFromBranchName(cfg *config.Config, branchName string) string {
 	prPrefix := cfg.Repo.PrPrefix
 	var BranchNameRegex2 = regexp.MustCompile(prPrefix + `/(` + CommitIdPattern + `)$`)
 	matches := BranchNameRegex2.FindStringSubmatch(branchName)
