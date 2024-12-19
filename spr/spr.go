@@ -142,7 +142,8 @@ func (sd *stackediff) UpdatePullRequests(ctx context.Context, reviewers []string
 	localCommits := alignLocalCommits(git.GetLocalCommitStack(sd.config, sd.gitcmd), githubInfo.PullRequests)
 	sd.profiletimer.Step("UpdatePullRequests::GetLocalCommitStack")
 
-	// close prs for deleted commits
+	// detect PRs without matching local commits;
+	// consider this an error and exit
 	var validPullRequests []*github.PullRequest
 	localCommitMap := map[string]*git.Commit{}
 	for _, commit := range localCommits {
@@ -150,8 +151,9 @@ func (sd *stackediff) UpdatePullRequests(ctx context.Context, reviewers []string
 	}
 	for _, pr := range githubInfo.PullRequests {
 		if _, found := localCommitMap[pr.Commit.CommitID]; !found {
-			sd.github.CommentPullRequest(ctx, pr, "Closing pull request: commit has gone away")
-			sd.github.ClosePullRequest(ctx, pr)
+			fmt.Println("Error: PR without matching local commit found:", pr.Commit.CommitID)
+			fmt.Println("Local commit map:", localCommitMap)
+			os.Exit(1)
 		} else {
 			validPullRequests = append(validPullRequests, pr)
 		}
