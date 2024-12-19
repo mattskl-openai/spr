@@ -434,7 +434,7 @@ func formatStackMarkdown(commit git.Commit, stack []*github.PullRequest, showPrT
 		if isCurrent {
 			prefix = "➡ "
 		} else {
-			prefix = "  "
+			prefix = "  "
 		}
 		var prTitle string
 		if showPrTitlesInStack {
