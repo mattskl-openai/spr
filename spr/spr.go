@@ -139,7 +139,7 @@ func (sd *stackediff) UpdatePullRequests(ctx context.Context, reviewers []string
 		return
 	}
 	sd.profiletimer.Step("UpdatePullRequests::FetchAndGetGitHubInfo")
-	localCommits := alignLocalCommits(git.GetLocalCommitStack(sd.config, sd.gitcmd), githubInfo.PullRequests)
+	localCommits := git.GetLocalCommitStack(sd.config, sd.gitcmd)
 	sd.profiletimer.Step("UpdatePullRequests::GetLocalCommitStack")
 
 	// detect PRs without matching local commits;

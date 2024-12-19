@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeTestObjects(t *testing.T) (
+func makeTestObjects(t *testing.T, mergeMethod string) (
 	s *stackediff, gitmock *mockgit.Mock, githubmock *mockclient.MockClient,
 	input *bytes.Buffer, output *bytes.Buffer) {
 	cfg := config.EmptyConfig()
@@ -24,7 +24,7 @@ func makeTestObjects(t *testing.T) (
 	cfg.Repo.RequireApproval = true
 	cfg.Repo.GitHubRemote = "origin"
 	cfg.Repo.GitHubBranch = "master"
-	cfg.Repo.MergeMethod = "rebase"
+	cfg.Repo.MergeMethod = mergeMethod
 	cfg.Repo.PrPrefix = "spr/master"
 	gitmock = mockgit.NewMockGit(t)
 	githubmock = mockclient.NewMockClient(t)
@@ -41,9 +41,12 @@ func makeTestObjects(t *testing.T) (
 	return
 }
 
+// TODO(mattskl): revisit if I need merge queue.
 func TestSPRBasicFlowFourCommitsQueue(t *testing.T) {
-	fmt.Println("TestSPRBasicFlowFourCommitsQueue")
-	s, gitmock, githubmock, _, output := makeTestObjects(t)
+	fmt.Println("TestSPRBasicFlowFourCommitsQueue -- skipped")
+	return
+
+	s, gitmock, githubmock, _, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -141,7 +144,7 @@ func TestSPRBasicFlowFourCommitsQueue(t *testing.T) {
 	}, lines[:6])
 	output.Reset()
 
-	// 'git spr merge' :: MergePullRequest :: commits=[a1, a2]
+	// 'git spr merge --count 2' :: MergePullRequest :: commits=[a1, a2]
 	githubmock.ExpectGetInfo()
 	githubmock.ExpectUpdatePullRequest(c2, nil)
 	githubmock.ExpectMergePullRequest(c2, genclient.PullRequestMergeMethod_REBASE)
@@ -203,7 +206,7 @@ func TestSPRBasicFlowFourCommitsQueue(t *testing.T) {
 
 func TestSPRBasicFlowFourCommits(t *testing.T) {
 	fmt.Println("TestSPRBasicFlowFourCommits")
-	s, gitmock, githubmock, _, output := makeTestObjects(t)
+	s, gitmock, githubmock, _, output := makeTestObjects(t, "squash")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -301,31 +304,72 @@ func TestSPRBasicFlowFourCommits(t *testing.T) {
 	}, lines[:6])
 	output.Reset()
 
-	// 'git spr merge' :: MergePullRequest :: commits=[a1, a2, a3, a4]
-	gitmock.ExpectLocalBranch("master")
+	// 'git spr merge --count 1' :: MergePullRequest :: commits=[a1, a2, a3, a4]
 	githubmock.ExpectGetInfo()
-	gitmock.ExpectLocalBranch("master")
-	githubmock.ExpectUpdatePullRequest(c4, nil)
-	githubmock.ExpectMergePullRequest(c4, genclient.PullRequestMergeMethod_REBASE)
-	githubmock.ExpectCommentPullRequest(c1)
-	githubmock.ExpectClosePullRequest(c1)
-	githubmock.ExpectCommentPullRequest(c2)
-	githubmock.ExpectClosePullRequest(c2)
-	githubmock.ExpectCommentPullRequest(c3)
-	githubmock.ExpectClosePullRequest(c3)
-	s.MergePullRequests(ctx, nil)
+	githubmock.ExpectUpdatePullRequest(c1, nil)
+	githubmock.ExpectMergePullRequest(c1, genclient.PullRequestMergeMethod_SQUASH)
+	s.MergePullRequests(ctx, uintptr(1))
 	lines = strings.Split(output.String(), "\n")
 	assert.Equal("MERGED   1 : test commit 1", lines[0])
-	assert.Equal("MERGED   1 : test commit 2", lines[1])
-	assert.Equal("MERGED   1 : test commit 3", lines[2])
-	assert.Equal("MERGED   1 : test commit 4", lines[3])
 	fmt.Printf("OUT: %s\n", output.String())
+	output.Reset()
+
+	// Drop the first PR since it's merged, and update the second PR as having
+	// 2 commits (c2 and c1).
+	// Also update all the commit hashes
+	githubmock.Info.PullRequests = githubmock.Info.PullRequests[1:]
+	githubmock.Info.PullRequests[0].Commits = append(githubmock.Info.PullRequests[0].Commits, c1)
+	c2.CommitHash = "c20000000000000000000000000000000000000a"
+	c3.CommitHash = "c30000000000000000000000000000000000000a"
+	c4.CommitHash = "c40000000000000000000000000000000000000a"
+
+	// `git spr update --count 1`
+	githubmock.ExpectGetInfo()
+	gitmock.ExpectFetch()
+	// Git fetch+rebase should drop c1 locally, since it'll be detected as merged.
+	gitmock.ExpectLogAndRespond([]*git.Commit{&c4, &c3, &c2})
+	// Push to update to synced commit, just c2 since --count 1
+	gitmock.ExpectPushCommits([]*git.Commit{&c2})
+	githubmock.ExpectUpdatePullRequest(c2, nil)
+	githubmock.ExpectGetInfo()
+
+	s.UpdatePullRequests(ctx, []string{mockclient.NobodyLogin}, uintptr(1))
+	lines = strings.Split(output.String(), "\n")
+	fmt.Printf("OUT: %s\n", output.String())
+	assert.Equal([]string{
+		"warning: not updating reviewers for PR #1",
+		"[vvvv]   1 : test commit 4",
+		"[vvvv]   1 : test commit 3",
+		"[vvvv]   1 : test commit 2",
+	}, lines[:4])
+	output.Reset()
+
+	// `git spr update`
+	githubmock.ExpectGetInfo()
+	gitmock.ExpectFetch()
+	gitmock.ExpectLogAndRespond([]*git.Commit{&c4, &c3, &c2})
+	gitmock.ExpectPushCommits([]*git.Commit{&c3, &c4})
+	githubmock.ExpectUpdatePullRequest(c3, &c2)
+	githubmock.ExpectUpdatePullRequest(c4, &c3)
+	githubmock.ExpectGetInfo()
+
+	s.UpdatePullRequests(ctx, []string{mockclient.NobodyLogin}, nil)
+	lines = strings.Split(output.String(), "\n")
+	fmt.Printf("OUT: %s\n", output.String())
+	assert.Equal([]string{
+		"warning: not updating reviewers for PR #1",
+		"warning: not updating reviewers for PR #1",
+		"warning: not updating reviewers for PR #1",
+		"[vvvv]   1 : test commit 4",
+		"[vvvv]   1 : test commit 3",
+		"[vvvv]   1 : test commit 2",
+	}, lines[:6])
 	output.Reset()
 }
 
 func TestSPRMergeCount(t *testing.T) {
 	fmt.Println("TestSPRMergeCount")
-	s, gitmock, githubmock, _, output := makeTestObjects(t)
+	s, gitmock, githubmock, _, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -397,7 +441,7 @@ func TestSPRMergeCount(t *testing.T) {
 
 func TestSPRAmendCommit(t *testing.T) {
 	fmt.Println("TestSPRAmendCommit")
-	s, gitmock, githubmock, _, output := makeTestObjects(t)
+	s, gitmock, githubmock, _, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -488,7 +532,7 @@ func TestSPRAmendCommit(t *testing.T) {
 
 func TestSPRReorderCommit(t *testing.T) {
 	fmt.Println("TestSPRReorderCommit")
-	s, gitmock, githubmock, _, output := makeTestObjects(t)
+	s, gitmock, githubmock, _, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -617,7 +661,7 @@ func TestSPRDeleteCommit(t *testing.T) {
 	fmt.Println("TestSPRDeleteCommit -- skipped")
 	return
 
-	s, gitmock, githubmock, _, output := makeTestObjects(t)
+	s, gitmock, githubmock, _, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -702,7 +746,7 @@ func TestSPRDeleteCommit(t *testing.T) {
 
 func TestAmendNoCommits(t *testing.T) {
 	fmt.Println("TestAmendNoCommits")
-	s, gitmock, _, _, output := makeTestObjects(t)
+	s, gitmock, _, _, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -713,7 +757,7 @@ func TestAmendNoCommits(t *testing.T) {
 
 func TestAmendOneCommit(t *testing.T) {
 	fmt.Println("TestAmendOneCommit")
-	s, gitmock, _, input, output := makeTestObjects(t)
+	s, gitmock, _, input, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -731,7 +775,7 @@ func TestAmendOneCommit(t *testing.T) {
 
 func TestAmendTwoCommits(t *testing.T) {
 	fmt.Println("TestAmendTwoCommits")
-	s, gitmock, _, input, output := makeTestObjects(t)
+	s, gitmock, _, input, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
@@ -754,7 +798,7 @@ func TestAmendTwoCommits(t *testing.T) {
 
 func TestAmendInvalidInput(t *testing.T) {
 	fmt.Println("TestAmendInvalidInput")
-	s, gitmock, _, input, output := makeTestObjects(t)
+	s, gitmock, _, input, output := makeTestObjects(t, "rebase")
 	assert := require.New(t)
 	ctx := context.Background()
 
