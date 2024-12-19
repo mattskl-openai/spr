@@ -177,7 +177,7 @@ func (sd *stackediff) UpdatePullRequests(ctx context.Context, reviewers []string
 		sd.profiletimer.Step("UpdatePullRequests::ReparentPullRequestsToMaster")
 	}
 
-	if !sd.syncCommitStackToGitHub(ctx, localCommits, githubInfo) {
+	if !sd.syncCommitStackToGitHub(ctx, localCommits, githubInfo, count) {
 		return
 	}
 	sd.profiletimer.Step("UpdatePullRequests::SyncCommitStackToGithub")
@@ -506,7 +506,7 @@ func (sd *stackediff) fetchAndGetGitHubInfo(ctx context.Context) *github.GitHubI
 //	which are new (on top of remote branch) and creates a corresponding
 //	branch on github for each commit.
 func (sd *stackediff) syncCommitStackToGitHub(ctx context.Context,
-	commits []git.Commit, info *github.GitHubInfo) bool {
+	commits []git.Commit, info *github.GitHubInfo, count *uint) bool {
 
 	var output string
 	sd.gitcmd.MustGit("status --porcelain --untracked-files=no", &output)
@@ -528,12 +528,15 @@ func (sd *stackediff) syncCommitStackToGitHub(ctx context.Context,
 	}
 
 	var updatedCommits []git.Commit
-	for _, commit := range commits {
+	for commitIndex, commit := range commits {
 		if commit.WIP {
 			break
 		}
 		if commitUpdated(commit, info) {
 			updatedCommits = append(updatedCommits, commit)
+		}
+		if count != nil && (commitIndex+1) == int(*count) {
+			break
 		}
 	}
 
